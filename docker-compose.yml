@@ -1,36 +1,41 @@
+
 x-environment: &default-environment
-  DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
-  SECRET_KEY: change_me_to_something_random # best to run openssl rand -hex 32
-  PORT: 8000 # If changing, change the web service port too
-  EMAIL_URL: consolemail:// # Example smtp://email:password@smtp_url:port https://glitchtip.com/documentation/install#configuration
-  GLITCHTIP_DOMAIN: https://glitchtip.example.com # Change this to your domain
-  DEFAULT_FROM_EMAIL: email@example.com # Change this to your email
-  CELERY_WORKER_AUTOSCALE: "1,3" # Scale between 1 and 3 to prevent excessive memory usage. Change it or remove to set it to the number of cpu cores.
+  DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/glitchtip
+  SECRET_KEY: ${SECRET}
+  PORT: ${PORT}
+  EMAIL_URL: ${EMAIL_URL}
+  GLITCHTIP_DOMAIN: ${DOMAIN}
+  DEFAULT_FROM_EMAIL: ${EMAIL_FROM}
 
 x-depends_on: &default-depends_on
   - postgres
   - redis
 
 services:
-  postgres:
+  db:
     image: postgres:17
     environment:
-      POSTGRES_HOST_AUTH_METHOD: "trust" # Consider removing this and setting a password
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: glitchtip
     restart: unless-stopped
     volumes:
-      - pg-data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
+
   redis:
     image: valkey/valkey
     restart: unless-stopped
+
   web:
     image: glitchtip/glitchtip
     depends_on: *default-depends_on
     ports:
-      - "8000:8000"
+      - "${PORT}:${PORT}"
     environment: *default-environment
     restart: unless-stopped
     volumes:
-      - uploads:/code/uploads
+      - up_data:/code/uploads
+
   worker:
     image: glitchtip/glitchtip
     command: ./bin/run-celery-with-beat.sh
@@ -39,6 +44,7 @@ services:
     restart: unless-stopped
     volumes:
       - uploads:/code/uploads
+
   migrate:
     image: glitchtip/glitchtip
     depends_on: *default-depends_on
@@ -46,5 +52,10 @@ services:
     environment: *default-environment
 
 volumes:
-  pg-data:
-  uploads:
+  pg_data:
+    name: ${VOLUME_DB_DATA}
+    external: true
+
+  up_data:
+    name: ${VOLUME_UP_DATA}
+    external: true
