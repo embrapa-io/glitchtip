@@ -7,13 +7,26 @@ Baseado na [configuração de _deploy_ do GlitchTip usando Docker Compose](https
 ## Deploy
 
 ```
-docker volume create glitchtip_db_data
-docker volume create glitchtip_up_data
+docker volume create glitchtip_database
+docker volume create --driver local --opt type=none --opt device=$(pwd)/upload --opt o=bind glitchtip_upload
+docker volume create --driver local --opt type=none --opt device=$(pwd)/backup --opt o=bind glitchtip_backup
 
 cp .env.example .env
 
 docker-compose up --force-recreate --build --remove-orphans --wait
 ```
+
+## Configuração
+
+É necessário [criar um _superuser_](https://glitchtip.com/documentation/install#django-admin) com o e-mail `io@embrapa.br`:
+
+```
+# docker-compose exec web bash
+
+$ ./manage.py createsuperuser
+```
+
+Em seguida, logue com este usuário e senha e, uma vez logado, vá em `/admin`.
 
 ## Update
 

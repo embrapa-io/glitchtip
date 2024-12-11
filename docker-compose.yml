@@ -6,9 +6,12 @@ x-environment: &default-environment
   EMAIL_URL: ${EMAIL_URL}
   GLITCHTIP_DOMAIN: ${DOMAIN}
   DEFAULT_FROM_EMAIL: ${EMAIL_FROM}
+  GLITCHTIP_MAX_EVENT_LIFE_DAYS: "365"
+  ENABLE_USER_REGISTRATION: "False"
+  ENABLE_ORGANIZATION_CREATION: "False"
 
 x-depends_on: &default-depends_on
-  - postgres
+  - db
   - redis
 
 services:
@@ -43,7 +46,7 @@ services:
     environment: *default-environment
     restart: unless-stopped
     volumes:
-      - uploads:/code/uploads
+      - up_data:/code/uploads
 
   migrate:
     image: glitchtip/glitchtip
@@ -53,9 +56,13 @@ services:
 
 volumes:
   pg_data:
-    name: ${VOLUME_DB_DATA}
+    name: ${VOLUME_DB}
     external: true
 
   up_data:
-    name: ${VOLUME_UP_DATA}
+    name: ${VOLUME_UPLOAD}
+    external: true
+
+  backup:
+    name: ${VOLUME_BACKUP}
     external: true
