@@ -11,8 +11,10 @@ x-environment: &default-environment
   ENABLE_ORGANIZATION_CREATION: "False"
 
 x-depends_on: &default-depends_on
-  - db
-  - redis
+  db:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
 
 services:
   db:
@@ -24,10 +26,21 @@ services:
     restart: unless-stopped
     volumes:
       - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready', '-d', 'glitchtip' ]
+      interval: 5s
+      timeout: 4s
+      retries: 6
+      start_period: 5s
 
   redis:
     image: valkey/valkey
     restart: unless-stopped
+    healthcheck:
+      test: [ 'CMD', 'redis-cli', 'ping' ]
+      interval: 5s
+      timeout: 4s
+      retries: 6
 
   web:
     image: glitchtip/glitchtip
@@ -53,6 +66,29 @@ services:
     depends_on: *default-depends_on
     command: ./bin/run-migrate.sh
     environment: *default-environment
+
+  backup:
+    image: prodrigestivill/postgres-backup-local
+    restart: unless-stopped
+    volumes:
+      - backup:/backups
+    links:
+      - db
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=glitchtip
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - SCHEDULE=@daily
+      - BACKUP_KEEP_DAYS=7
+      - BACKUP_KEEP_WEEKS=4
+      - BACKUP_KEEP_MONTHS=6
+    profiles:
+      - test
+      - production
 
 volumes:
   pg_data:
